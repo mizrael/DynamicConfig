@@ -78,5 +78,16 @@ namespace DynamicConfig.Tests
             Assert.AreEqual("John", provider.Default.name);
             Assert.AreEqual("Doe", provider.Default.surname);
         }
+        
+        [TestMethod]
+        public void GetNonExistentValueTest()
+        {
+            dynamic provider = new JsonConfigProvider();
+
+            var notExistent = provider.notExistent;
+
+            Assert.IsNotNull(notExistent);
+            Assert.IsFalse(notExistent);
+        }
     }
 }
