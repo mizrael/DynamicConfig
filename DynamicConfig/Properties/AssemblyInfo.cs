@@ -6,7 +6,7 @@ using System.Runtime.InteropServices;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [assembly: AssemblyTitle("DynamicConfig")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyDescription("DynamicConfig is a very simple to use configuration library based on the C# 4.0 dynamic feature.")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Davide Guida")]
 [assembly: AssemblyProduct("DynamicConfig")]
