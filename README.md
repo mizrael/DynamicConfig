@@ -60,7 +60,7 @@ configurations can include also complex objects:
 	var configName = "myConfig";
 	jsonProvider.Parse(configName, json);
 	
-	var three = jsonProvider.myConfig.three;
+	var three = jsonProvider.myConfig.complex.three;
 	Console.Writeline("three: {0}", three);
 ```	
 
