@@ -65,5 +65,4 @@ configurations can include also complex objects:
 ```	
 
 ## Incoming Features
-- writing to configuration file
 - appSettings Provider
