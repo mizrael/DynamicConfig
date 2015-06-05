@@ -3,6 +3,7 @@ DynamicConfig README
 
 ## About
 DynamicConfig is a very simple to use configuration library based on the C# 4.0 dynamic feature. It allows loading from file (or parsing) multiple configurations that can be later accessed via dynamic typing, no custom classes or casts are required.
+If a configuration was loaded from file, updating a property will result in the original file to be updated.
 
 DynamicConfig is somewhat based on JsonConfig ( https://github.com/Dynalon/JsonConfig ) but uses Newtonsoft.JSON instead of JsonFX
 
@@ -64,5 +65,11 @@ configurations can include also complex objects:
 	Console.Writeline("three: {0}", three);
 ```	
 
-## Incoming Features
+## Incoming Features/Upgrades
+- monitor config file changes on filesystem to force config reload
+- provider options (eg. readonly)
 - appSettings Provider
+
+## TODO
+- better error checking (eg. while saving)
+- 
