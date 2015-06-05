@@ -104,30 +104,10 @@ namespace DynamicConfig.Models
         public IDisposable Subscribe(IObserver<ConfigObject> observer)
         {
             if (!_observers.Contains(observer))            
-                _observers.Add(observer);            
+                _observers.Add(observer);
 
-            return new Unsubscriber(_observers, observer);
-        }
-
-        private class Unsubscriber : IDisposable
-        {
-            private List<IObserver<ConfigObject>> observers;
-            private IObserver<ConfigObject> observer;
-
-            public Unsubscriber(List<IObserver<ConfigObject>> observers, IObserver<ConfigObject> observer)
-            {
-                this.observers = observers;
-                this.observer = observer;
-            }
-
-            public void Dispose()
-            {
-                if (observer != null && observers.Contains(observer))
-                {
-                    observers.Remove(observer);
-                }
-            }
-        }
+            return new Unsubscriber<ConfigObject>(_observers, observer);
+        }       
 
         #endregion IObservable
 

@@ -7,9 +7,14 @@ using Newtonsoft.Json;
 
 namespace DynamicConfig.Providers
 {
-    public class JsonConfigProvider : DynamicObject, IConfigProvider, IObserver<ConfigObject>
+    public class JsonConfigProvider : DynamicObject, IConfigProvider, IObserver<ConfigInfo>
     {
+        #region private members
+
         private ConcurrentDictionary<string, ConfigInfo> _configs = null;
+        private static object _sysLock = new object();
+
+        #endregion private members
 
         public JsonConfigProvider()
         {
@@ -62,10 +67,33 @@ namespace DynamicConfig.Providers
                 Filename = filename
             };
 
-            info = _configs.AddOrUpdate(uniqueName, info, (s, d) => { return info; });                    
-            info.Data.Subscribe(this);            
+            data.Subscribe(info);           
+
+            info = _configs.AddOrUpdate(uniqueName, info, (s, d) => { return info; });
+            info.Subscribe(this);           
 
             return info.Data;
+        }
+
+        private void Persist(ConfigInfo config)
+        {
+            if (null == config)
+                throw new ArgumentNullException("config");
+
+            if (null == config.Data)
+                throw new ArgumentException("invalid config");
+
+            if (string.IsNullOrWhiteSpace(config.Filename))
+                return;
+
+            if (!System.IO.File.Exists(config.Filename))
+                throw new System.IO.FileNotFoundException("configuration file not found: " + config.Filename);
+
+            lock (_sysLock)
+            {
+                var json = Newtonsoft.Json.JsonConvert.SerializeObject(config.Data);
+                System.IO.File.WriteAllText(config.Filename, json);
+            }
         }
 
         #endregion Private Methods
@@ -82,11 +110,11 @@ namespace DynamicConfig.Providers
             throw new NotImplementedException();
         }
 
-        public void OnNext(ConfigObject value)
+        public void OnNext(ConfigInfo value)
         {
-            return;
+            Persist(value);
         }
 
-        #endregion IObserver
+        #endregion IObserver       
     }  
 }
