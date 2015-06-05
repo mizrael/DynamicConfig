@@ -6,12 +6,27 @@ namespace DynamicConfig.Models
 {
     public class ConfigObject : DynamicObject, IDictionary<string, object>
     {
-        internal Dictionary<string, object> members = new Dictionary<string, object>();
+        internal Dictionary<string, object> _members = null;
+
+        #region cTors
+
+        public ConfigObject()
+        {
+            _members = new Dictionary<string, object>();
+        }
+
+        public ConfigObject(IDictionary<string, object> dictionary)
+        {
+            if (null == dictionary) throw new ArgumentNullException("values");
+            _members = new Dictionary<string, object>(dictionary);
+        }
+
+        #endregion cTors
 
         public override bool TryGetMember(GetMemberBinder binder, out object result)
         {
-            if (members.ContainsKey(binder.Name))
-                result = members[binder.Name];
+            if (_members.ContainsKey(binder.Name))
+                result = _members[binder.Name];
             else
                 result = new NullExceptionPreventer();
 
@@ -20,10 +35,10 @@ namespace DynamicConfig.Models
 
         public override bool TrySetMember(SetMemberBinder binder, object value)
         {
-            if (this.members.ContainsKey(binder.Name))
-                this.members[binder.Name] = value;
+            if (this._members.ContainsKey(binder.Name))
+                this._members[binder.Name] = value;
             else
-                this.members.Add(binder.Name, value);
+                this._members.Add(binder.Name, value);
             return true;
         }
 
@@ -60,28 +75,28 @@ namespace DynamicConfig.Models
 
         public void Add(string key, object value)
         {
-            members.Add(key, value);
+            _members.Add(key, value);
         }
 
         public bool ContainsKey(string key)
         {
-            return members.ContainsKey(key);
+            return _members.ContainsKey(key);
         }
 
         public bool Remove(string key)
         {
-            return members.Remove(key);
+            return _members.Remove(key);
         }
 
         public object this[string key]
         {
             get
             {
-                return members[key];
+                return _members[key];
             }
             set
             {
-                members[key] = value;
+                _members[key] = value;
             }
         }
 
@@ -89,7 +104,7 @@ namespace DynamicConfig.Models
         {
             get
             {
-                return members.Keys;
+                return _members.Keys;
             }
         }
 
@@ -97,12 +112,12 @@ namespace DynamicConfig.Models
         {
             get
             {
-                return members.Values;
+                return _members.Values;
             }
         }
         public bool TryGetValue(string key, out object value)
         {
-            return members.TryGetValue(key, out value);
+            return _members.TryGetValue(key, out value);
         }
 
         #endregion IDictionary implementation
@@ -111,12 +126,12 @@ namespace DynamicConfig.Models
 
         public System.Collections.IEnumerator GetEnumerator()
         {
-            return members.GetEnumerator();
+            return _members.GetEnumerator();
         }
 
         IEnumerator<KeyValuePair<string, object>> IEnumerable<KeyValuePair<string, object>>.GetEnumerator()
         {
-            return members.GetEnumerator();
+            return _members.GetEnumerator();
         }
 
         #endregion IEnumerable implementation
@@ -125,17 +140,17 @@ namespace DynamicConfig.Models
 
         public void Add(KeyValuePair<string, object> item)
         {
-            members.Add(item.Key, item.Value);
+            _members.Add(item.Key, item.Value);
         }
 
         public void Clear()
         {
-            members.Clear();
+            _members.Clear();
         }
 
         public bool Contains(KeyValuePair<string, object> item)
         {
-            return members.ContainsKey(item.Key) && members[item.Key] == item.Value;
+            return _members.ContainsKey(item.Key) && _members[item.Key] == item.Value;
         }
 
         public void CopyTo(KeyValuePair<string, object>[] array, int arrayIndex)
@@ -152,7 +167,7 @@ namespace DynamicConfig.Models
         {
             get
             {
-                return members.Count;
+                return _members.Count;
             }
         }
 

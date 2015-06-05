@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.Dynamic;
 using System.Linq;
 using DynamicConfig.Models;
+using DynamicConfig.Extensions;
+using Newtonsoft.Json.Linq;
 
 namespace DynamicConfig
 {
@@ -59,12 +61,55 @@ namespace DynamicConfig
                 if (!dict2.Keys.Contains(kvp.Key))
                     rdict.Add(kvp.Key, kvp.Value);
             foreach (var kvp in dict2)
-                if (!dict1.Keys.Contains(kvp.Key))
-                    rdict.Add(kvp.Key, kvp.Value);
+            {
+                if (dict1.Keys.Contains(kvp.Key))
+                    continue;
 
+                var value = ProcessProperties(kvp.Value);                
+
+                rdict.Add(kvp.Key, value);
+            }
+                
             // now handle the colliding keys	
             MergeColliding(dict1, dict2, rdict);
+
             return result;
+        }
+
+        private static dynamic ProcessProperties(dynamic value)
+        {
+            if (value is string)
+                return value;
+
+            var jObj = value as JObject;
+            if (null != jObj)
+            {
+                var dict = new Dictionary<string, object>(jObj.Count);
+
+                foreach (var kvp in jObj)
+                {
+                    dict[kvp.Key] = ProcessProperties(jObj[kvp.Key]);
+                }
+
+                return new ConfigObject(dict);
+            }
+
+            var jVal = value as JValue;
+            if (null != jVal)            
+                return jVal.Value;            
+
+            if (value is IEnumerable)
+            {
+                var tmpArray = new ArrayList();
+                tmpArray.AddRange(value);
+
+                for (int i = 0; i != tmpArray.Count; ++i)
+                    tmpArray[i] = ProcessProperties(tmpArray[i]);
+
+                return tmpArray.ToArray();
+            }
+
+            return value;
         }
 
         private static void MergeColliding(IDictionary<string, object> dict1, IDictionary<string, object> dict2, IDictionary<string, object> rdict)
@@ -114,35 +159,8 @@ namespace DynamicConfig
                 //}
             }
         }
-      
-        /// <summary>
-        /// Merges the multiple ConfigObjects, accepts infinite list of arguments
-        /// First named objects overrule preceeding objects.
-        /// </summary>
-        /// <returns>
-        /// The merged ConfigObject.
-        /// </returns>
-        /// <param name='objects'>
-        /// List of objects which are to be merged.
-        /// </param>
-        public static dynamic MergeMultiple(params object[] objects)
-        {
-            if (objects.Length == 1)
-                return objects[0];
 
-            else if (objects.Length == 2)
-                return Merge(objects[0], objects[1]);
-
-            else
-            {
-                object head = objects.First();
-                object[] tail = objects.Skip(1).Take(objects.Length - 1).ToArray();
-
-                return Merge(head, MergeMultiple(tail));
-            }
-        }
-
-        public static dynamic CollectionMerge(dynamic obj1, dynamic obj2)
+        private static dynamic CollectionMerge(dynamic obj1, dynamic obj2)
         {
             var x = new ArrayList();
             x.AddRange(obj1);
@@ -155,6 +173,7 @@ namespace DynamicConfig
                 return x.ToArray(obj1_type);
         }
     }
+
     /// <summary>
     /// Get thrown if two types do not match and can't be merges
     /// </summary>	
