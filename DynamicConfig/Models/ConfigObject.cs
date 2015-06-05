@@ -1,27 +1,59 @@
 ﻿using System;
+using System.Linq;
+using System.Collections;
 using System.Collections.Generic;
 using System.Dynamic;
+using Newtonsoft.Json.Linq;
 
 namespace DynamicConfig.Models
 {
-    public class ConfigObject : DynamicObject, IDictionary<string, object>
+    public class ConfigObject : DynamicObject, IEnumerable, IObservable<ConfigObject>
     {
-        internal Dictionary<string, object> _members = null;
+        #region members
+
+        private Dictionary<string, object> _members = null;
+        private List<IObserver<ConfigObject>> _observers;
+
+        #endregion members
 
         #region cTors
 
-        public ConfigObject()
-        {
-            _members = new Dictionary<string, object>();
+        public ConfigObject() : this(null)
+        {            
         }
 
-        public ConfigObject(IDictionary<string, object> dictionary)
+        public ConfigObject(ConfigObject parent)
+            : this(null, null)
+        {         
+        }
+
+        public ConfigObject(ConfigObject parent, IDictionary<string, object> dictionary)
         {
-            if (null == dictionary) throw new ArgumentNullException("values");
-            _members = new Dictionary<string, object>(dictionary);
+            this.Parent = parent;
+
+            _observers = new List<IObserver<ConfigObject>>();
+            _members = new Dictionary<string, object>();
+
+            if (null != dictionary && dictionary.Any())
+                this.AddRange(dictionary);
         }
 
         #endregion cTors
+
+        #region public methods
+
+        public void AddRange(IDictionary<string, object> dictionary)
+        {
+            if (null == dictionary)
+                throw new ArgumentNullException("dictionary");
+
+            foreach (var kvp in dictionary)
+                _members[kvp.Key] = ProcessProperties(this, dictionary[kvp.Key]);
+        }
+
+        #endregion public methods
+
+        #region DynamicObject
 
         public override bool TryGetMember(GetMemberBinder binder, out object result)
         {
@@ -35,92 +67,19 @@ namespace DynamicConfig.Models
 
         public override bool TrySetMember(SetMemberBinder binder, object value)
         {
-            if (this._members.ContainsKey(binder.Name))
-                this._members[binder.Name] = value;
+            value = ProcessProperties(this, value as dynamic);
+
+            if (_members.ContainsKey(binder.Name))
+                _members[binder.Name] = value;
             else
-                this._members.Add(binder.Name, value);
+                _members.Add(binder.Name, value);
+
+            Notify(this); 
+
             return true;
         }
 
-        public static ConfigObject FromExpando(ExpandoObject e)
-        {
-            var edict = e as IDictionary<string, object>;
-            var c = new ConfigObject();
-            var cdict = (IDictionary<string, object>)c;
-
-            // won't work for generic ExpandoObjects which might include collections etc.
-            foreach (var kvp in edict)
-            {
-                // recursively convert and add ExpandoObjects
-                if (kvp.Value is ExpandoObject)
-                {
-                    cdict.Add(kvp.Key, FromExpando((ExpandoObject)kvp.Value));
-                }
-                else if (kvp.Value is ExpandoObject[])
-                {
-                    var config_objects = new List<ConfigObject>();
-                    foreach (var ex in ((ExpandoObject[])kvp.Value))
-                    {
-                        config_objects.Add(FromExpando(ex));
-                    }
-                    cdict.Add(kvp.Key, config_objects.ToArray());
-                }
-                else
-                    cdict.Add(kvp.Key, kvp.Value);
-            }
-            return c;
-        }
-
-        #region IDictionary implementation
-
-        public void Add(string key, object value)
-        {
-            _members.Add(key, value);
-        }
-
-        public bool ContainsKey(string key)
-        {
-            return _members.ContainsKey(key);
-        }
-
-        public bool Remove(string key)
-        {
-            return _members.Remove(key);
-        }
-
-        public object this[string key]
-        {
-            get
-            {
-                return _members[key];
-            }
-            set
-            {
-                _members[key] = value;
-            }
-        }
-
-        public ICollection<string> Keys
-        {
-            get
-            {
-                return _members.Keys;
-            }
-        }
-
-        public ICollection<object> Values
-        {
-            get
-            {
-                return _members.Values;
-            }
-        }
-        public bool TryGetValue(string key, out object value)
-        {
-            return _members.TryGetValue(key, out value);
-        }
-
-        #endregion IDictionary implementation
+        #endregion DynamicObject
 
         #region IEnumerable implementation
 
@@ -129,38 +88,80 @@ namespace DynamicConfig.Models
             return _members.GetEnumerator();
         }
 
-        IEnumerator<KeyValuePair<string, object>> IEnumerable<KeyValuePair<string, object>>.GetEnumerator()
-        {
-            return _members.GetEnumerator();
-        }
-
         #endregion IEnumerable implementation
 
-        #region ICollection implementation
+        #region IObservable
 
-        public void Add(KeyValuePair<string, object> item)
+        protected void Notify(ConfigObject obj)
         {
-            _members.Add(item.Key, item.Value);
+            foreach (var observer in _observers)            
+                observer.OnNext(obj);
+
+            if (null != this.Parent)
+                this.Parent.Notify(obj);
         }
 
-        public void Clear()
+        public IDisposable Subscribe(IObserver<ConfigObject> observer)
         {
-            _members.Clear();
+            if (!_observers.Contains(observer))            
+                _observers.Add(observer);            
+
+            return new Unsubscriber(_observers, observer);
         }
 
-        public bool Contains(KeyValuePair<string, object> item)
+        private class Unsubscriber : IDisposable
         {
-            return _members.ContainsKey(item.Key) && _members[item.Key] == item.Value;
+            private List<IObserver<ConfigObject>> observers;
+            private IObserver<ConfigObject> observer;
+
+            public Unsubscriber(List<IObserver<ConfigObject>> observers, IObserver<ConfigObject> observer)
+            {
+                this.observers = observers;
+                this.observer = observer;
+            }
+
+            public void Dispose()
+            {
+                if (observer != null && observers.Contains(observer))
+                {
+                    observers.Remove(observer);
+                }
+            }
         }
 
-        public void CopyTo(KeyValuePair<string, object>[] array, int arrayIndex)
+        #endregion IObservable
+
+        #region Properties
+
+        public ConfigObject Parent { get; private set; }
+
+        public dynamic this[string key]
         {
-            throw new NotImplementedException();
+            get
+            {
+                if (_members.ContainsKey(key))
+                    return _members[key];
+                return new NullExceptionPreventer();
+            }
+            set
+            {
+                var processedValue = ProcessProperties(this, value as dynamic);
+                _members[key] = processedValue;
+            }
         }
 
-        public bool Remove(KeyValuePair<string, object> item)
+        public dynamic this[int index]
         {
-            throw new System.NotImplementedException();
+            get
+            {
+                var key = index.ToString();
+                return this[key];
+            }
+            set
+            {
+                var processedValue = ProcessProperties(this, value as dynamic);
+                _members[index.ToString()] = processedValue;
+            }
         }
 
         public int Count
@@ -171,13 +172,49 @@ namespace DynamicConfig.Models
             }
         }
 
-        public bool IsReadOnly
+
+        #endregion Properties
+
+        #region private methods
+
+        private static dynamic ProcessProperties(ConfigObject parent, dynamic value)
         {
-            get
+            if (value is string || value is ConfigObject)
+                return value;
+
+            var jObj = value as JObject;
+            if (null != jObj)
             {
-                throw new System.NotImplementedException();
+                var retVal = new ConfigObject(parent);
+
+                var dict = new Dictionary<string, object>(jObj.Count);
+                foreach (var kvp in jObj)
+                    dict[kvp.Key] = ProcessProperties(retVal, jObj[kvp.Key]);
+
+                retVal.AddRange(dict);
+                
+                return retVal;
             }
+
+            var jVal = value as JValue;
+            if (null != jVal)
+                return jVal.Value;
+
+            if (value is IEnumerable)
+            {
+                var retVal = new ConfigObject(parent);
+
+                var tmpArray = new ArrayList();
+                tmpArray.AddRange(value);
+                for (int i = 0; i != tmpArray.Count; ++i)
+                    retVal[i] = ProcessProperties(parent, tmpArray[i]);
+
+                return retVal;
+            }
+
+            return value;
         }
-        #endregion ICollection implementation
+
+        #endregion private methods
     }
 }

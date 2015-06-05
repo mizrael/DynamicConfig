@@ -7,7 +7,7 @@ using Newtonsoft.Json;
 
 namespace DynamicConfig.Providers
 {
-    public class JsonConfigProvider : DynamicObject, IConfigProvider
+    public class JsonConfigProvider : DynamicObject, IConfigProvider, IObserver<ConfigObject>
     {
         private ConcurrentDictionary<string, ConfigInfo> _configs = null;
 
@@ -24,7 +24,7 @@ namespace DynamicConfig.Providers
                 throw new ArgumentNullException("fullPath");
 
             var json = System.IO.File.ReadAllText(fullPath);
-            return AddOrUpdate(uniqueName, json);
+            return AddOrUpdate(uniqueName, json, fullPath);
         }
 
         public ConfigObject Parse(string uniqueName, string json)
@@ -34,7 +34,7 @@ namespace DynamicConfig.Providers
             if (string.IsNullOrWhiteSpace(json))
                 throw new ArgumentNullException("json");
 
-            return AddOrUpdate(uniqueName, json);
+            return AddOrUpdate(uniqueName, json, string.Empty);
         }
 
         public override bool TryGetMember(GetMemberBinder binder, out object result)
@@ -50,23 +50,43 @@ namespace DynamicConfig.Providers
 
         #region Private Methods
 
-        private ConfigObject AddOrUpdate(string uniqueName, string json)
+        private ConfigObject AddOrUpdate(string uniqueName, string json, string filename)
         {
             var parsedConfig = JsonConvert.DeserializeObject<IDictionary<string, object>>(json);
 
-            ConfigObject data = Merger.Merge(new ConfigObject(), parsedConfig);
+            var data = new ConfigObject(null, parsedConfig);
 
             var info = new ConfigInfo(uniqueName)
             {
-                Data = data
+                Data = data,
+                Filename = filename
             };
 
-            info = _configs.AddOrUpdate(uniqueName, info, (s, d) => { return info; });
+            info = _configs.AddOrUpdate(uniqueName, info, (s, d) => { return info; });                    
+            info.Data.Subscribe(this);            
+
             return info.Data;
         }
 
         #endregion Private Methods
-    }
 
-  
+        #region IObserver
+
+        public void OnCompleted()
+        {
+            throw new NotImplementedException();
+        }
+
+        public void OnError(Exception error)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void OnNext(ConfigObject value)
+        {
+            return;
+        }
+
+        #endregion IObserver
+    }  
 }

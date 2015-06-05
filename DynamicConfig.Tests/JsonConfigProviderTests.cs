@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Linq;
+using DynamicConfig.Models;
 using DynamicConfig.Providers;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -82,10 +83,11 @@ namespace DynamicConfig.Tests
             var myArray = config.myArray as IEnumerable;
             Assert.IsNotNull(myArray);
 
-            var objArray = myArray.Cast<object>().ToArray();
-            Assert.AreEqual(3, objArray.Length);
-            
-            Assert.AreEqual("John", objArray[2]);
+            var myArrayConfig = myArray as ConfigObject;
+            Assert.IsNotNull(myArrayConfig); 
+            Assert.AreEqual(3, myArrayConfig.Count);
+
+            Assert.AreEqual("John", myArrayConfig[2]);
         }
 
         [TestMethod]
@@ -102,13 +104,13 @@ namespace DynamicConfig.Tests
             var myArray = config.myArray as IEnumerable;
             Assert.IsNotNull(myArray);
 
-            var objArray = myArray.Cast<object>().ToArray();
-            Assert.AreEqual(3, objArray.Length);
+            var myArrayConfig = myArray as ConfigObject;
+            Assert.IsNotNull(myArrayConfig); 
+            Assert.AreEqual(3, myArrayConfig.Count);
 
-            var innerObj = objArray[2] as dynamic;
-            Assert.IsNotNull(innerObj);
-            Assert.AreEqual(1, innerObj.myProp1);
-            Assert.AreEqual("Doe", innerObj.myProp2);
+            var innerObject = myArrayConfig[2];
+            Assert.AreEqual(1, innerObject.myProp1);
+            Assert.AreEqual("Doe", innerObject.myProp2);
         }
 
         [TestMethod]
@@ -191,6 +193,18 @@ namespace DynamicConfig.Tests
 
             provider.Default.complex.one = "one";
             Assert.AreEqual("one", provider.Default.complex.one);
+        }
+
+        [TestMethod]
+        public void SetToComplexValueTest()
+        {
+            var json = "{name:\"John\", complex:{ one: 1, two: 2, three: \"three\" } }";
+
+            dynamic provider = new JsonConfigProvider();
+            provider.Parse("Default", json);
+            
+            provider.Default.otherComplex = new[] { "my", "second", "complex" };
+            Assert.IsNotNull(provider.Default.otherComplex);
         }
     }
 }

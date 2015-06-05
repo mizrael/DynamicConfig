@@ -44,7 +44,6 @@
   <ItemGroup>
     <Compile Include="Config.cs" />
     <Compile Include="Extensions\JObjectExtensions.cs" />
-    <Compile Include="Merger.cs" />
     <Compile Include="Models\ConfigInfo.cs" />
     <Compile Include="Models\ConfigObject.cs" />
     <Compile Include="Models\NullExceptionPreventer.cs" />
