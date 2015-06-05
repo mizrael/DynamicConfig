@@ -54,6 +54,8 @@
     <Compile Include="JsonConfigProviderTests.cs" />
     <Compile Include="ConfigTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ConfigObjectObserverTests.cs" />
+    <Compile Include="ConfigObjectTests.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\DynamicConfig\DynamicConfig.csproj">

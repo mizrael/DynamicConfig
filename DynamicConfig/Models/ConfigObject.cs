@@ -1,12 +1,14 @@
 ﻿using System;
-using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
 using System.Dynamic;
+using System.Linq;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace DynamicConfig.Models
 {
+    [JsonConverter(typeof(Serializers.ConfigObjectJsonSerializer))]
     public class ConfigObject : DynamicObject, IEnumerable, IObservable<ConfigObject>
     {
         #region members
@@ -23,7 +25,7 @@ namespace DynamicConfig.Models
         }
 
         public ConfigObject(ConfigObject parent)
-            : this(null, null)
+            : this(parent, null)
         {         
         }
 
@@ -60,7 +62,7 @@ namespace DynamicConfig.Models
             if (_members.ContainsKey(binder.Name))
                 result = _members[binder.Name];
             else
-                result = new NullExceptionPreventer();
+                result = new ConfigObject(this);
 
             return true;
         }
@@ -115,13 +117,21 @@ namespace DynamicConfig.Models
 
         public ConfigObject Parent { get; private set; }
 
+        public IEnumerable<string> Keys
+        {
+            get
+            {
+                return _members.Keys;
+            }
+        }
+
         public dynamic this[string key]
         {
             get
             {
                 if (_members.ContainsKey(key))
                     return _members[key];
-                return new NullExceptionPreventer();
+                return new ConfigObject(this);
             }
             set
             {
@@ -151,8 +161,7 @@ namespace DynamicConfig.Models
                 return _members.Count;
             }
         }
-
-
+        
         #endregion Properties
 
         #region private methods

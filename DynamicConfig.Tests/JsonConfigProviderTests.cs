@@ -9,6 +9,17 @@ namespace DynamicConfig.Tests
     [TestClass]
     public class JsonConfigProviderTests
     {
+        [TestCleanup]
+        public void Cleanup()
+        {
+            var currDir = System.IO.Directory.GetCurrentDirectory();
+            var testFiles = System.IO.Directory.GetFiles(currDir, "test*.json");
+            foreach(var file in testFiles)
+                System.IO.File.Delete(file);
+        }
+
+        #region parse
+
         [TestMethod]
         public void ParseTest()
         {
@@ -113,6 +124,10 @@ namespace DynamicConfig.Tests
             Assert.AreEqual("Doe", innerObject.myProp2);
         }
 
+        #endregion parse
+
+        #region load
+
         [TestMethod]
         public void LoadTest()
         {
@@ -143,6 +158,10 @@ namespace DynamicConfig.Tests
             Assert.AreEqual("three", config.complex.three);
         }
 
+        #endregion load
+
+        #region get
+
         [TestMethod]
         public void GetValueTest()
         {
@@ -166,7 +185,11 @@ namespace DynamicConfig.Tests
             Assert.IsNotNull(notExistent);
             Assert.IsFalse(notExistent);
         }
-        
+
+        #endregion get
+
+        #region set
+
         [TestMethod]
         public void SetValueTest()
         {
@@ -205,6 +228,52 @@ namespace DynamicConfig.Tests
             
             provider.Default.otherComplex = new[] { "my", "second", "complex" };
             Assert.IsNotNull(provider.Default.otherComplex);
+        }
+
+        #endregion set
+
+        #region save
+
+        [TestMethod]
+        public void SaveTest()
+        {
+            var configFile = "simple.json";
+            var filename = CreateTempConfigFile(configFile);
+
+            var provider = new JsonConfigProvider();
+            dynamic config = provider.Load("default", filename);
+                        
+            Assert.AreEqual("John", config.name);
+
+            config.name = "Bill";
+            Assert.AreEqual("Bill", config.name);
+
+            dynamic config2 = provider.Load("loadedDefault", filename);
+            Assert.AreEqual("Bill", config2.name);
+        }
+
+        [TestMethod]
+        public void SaveComplexTest()
+        {
+            var configFile = "complex.json";
+            var filename = CreateTempConfigFile(configFile);
+
+            var provider = new JsonConfigProvider();
+            dynamic config = provider.Load("default", filename);
+
+            config.complex.one = "one";
+
+            dynamic config2 = provider.Load("loadedDefault", filename);
+            Assert.AreEqual("one", config2.complex.one);
+        }
+
+        #endregion save
+
+        private static string CreateTempConfigFile(string configFile)
+        {
+            var filename = "test" + System.DateTime.UtcNow.Ticks.ToString() + ".json";
+            System.IO.File.Copy(configFile, filename);
+            return filename;
         }
     }
 }
