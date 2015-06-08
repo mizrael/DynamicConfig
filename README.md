@@ -68,6 +68,7 @@ configurations can include also complex objects:
 ## Incoming Features/Upgrades
 - monitor config file changes on filesystem to force config reload
 - provider options (eg. readonly)
+- Async
 - appSettings Provider
 
 ## TODO
